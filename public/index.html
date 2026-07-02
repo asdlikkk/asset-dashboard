@@ -1,0 +1,1966 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>我的资产看板</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0f1419; --card: #1a2332; --border: #2d3748;
+  --text: #e2e8f0; --text2: #a0aec0; --accent: #4299e1;
+  --green: #48bb78; --red: #f56565; --yellow: #ecc94b; --orange: #ed8936; --purple: #9f7aea;
+}
+:root.light {
+  --bg: #f5f7fa; --card: #ffffff; --border: #e2e8f0;
+  --text: #1a202c; --text2: #4a5568; --accent: #3182ce;
+  --green: #38a169; --red: #e53e3e; --yellow: #d69e2e; --orange: #dd6b20; --purple: #805ad5;
+}
+:root.light .up { color: #e53e3e; }
+:root.light .down { color: #38a169; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.2s, color 0.2s; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.nav { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+.nav-btn { padding: 8px 16px; border: 1px solid var(--border); background: var(--card); color: var(--text2); border-radius: 6px; cursor: pointer; font-size: 14px; }
+.nav-btn:hover { border-color: var(--accent); color: var(--text); }
+.nav-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.nav-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.refresh-time { font-size: 12px; color: var(--text2); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.card-title { font-size: 14px; color: var(--text2); margin-bottom: 8px; }
+.card-value { font-size: 26px; font-weight: 700; word-break: break-all; }
+.card-change { font-size: 13px; margin-top: 4px; }
+.up { color: var(--red); } .down { color: var(--green); }
+.chart-card { position: relative; }
+.chart-hint { font-size: 12px; color: var(--text2); margin-top: 10px; }
+.chart-tooltip {
+  position: absolute; display: none; min-width: 180px;
+  padding: 10px 12px; border-radius: 10px;
+  background: rgba(15,20,25,0.96); color: #fff;
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.28);
+  pointer-events: none; z-index: 5;
+}
+:root.light .chart-tooltip {
+  background: rgba(255,255,255,0.98);
+  color: var(--text);
+  border-color: var(--border);
+}
+.chart-tooltip-date { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+.chart-tooltip-value { font-size: 18px; font-weight: 700; }
+.chart-tooltip-meta { font-size: 11px; color: var(--text2); margin-top: 4px; }
+.overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { color: var(--text2); font-weight: 500; }
+td:first-child, th:first-child { text-align: left; }
+tr:hover td { background: rgba(66,153,225,0.05); }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+.modal h3 { margin-bottom: 16px; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 13px; color: var(--text2); margin-bottom: 4px; }
+.form-group input, .form-group select { width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; }
+.form-group input:disabled { opacity: 0.6; }
+.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #3182ce; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-group { display: flex; gap: 8px; margin-top: 16px; }
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.chart-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.pie-chart { width: 160px; height: 160px; border-radius: 50%; margin: 0 auto 12px; }
+.legend { font-size: 12px; }
+.legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.page { display: none; } .page.active { display: block; }
+.acc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+
+/* 新潮按钮样式 */
+.btn-modern {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border: none; border-radius: 10px;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn-modern:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+.btn-modern:active { transform: translateY(0); }
+.btn-upload { background: linear-gradient(135deg, #48bb78, #38a169); color: #fff; }
+.btn-download { background: linear-gradient(135deg, #9f7aea, #805ad5); color: #fff; }
+.btn-theme { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 10px; cursor: pointer; font-size: 16px; }
+
+/* 手机录入页 */
+.m-account-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+.m-acc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.m-acc-name { font-size: 17px; font-weight: 600; margin-bottom: 4px; word-break: break-all; }
+.m-acc-meta { font-size: 12px; color: var(--text2); }
+.m-sub-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 12px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 10px;
+  margin-bottom: 8px; cursor: pointer;
+  transition: background 0.15s;
+}
+.m-sub-row:active { background: rgba(66,153,225,0.1); }
+.m-sub-info { flex: 1; min-width: 0; }
+.m-sub-name { font-size: 15px; font-weight: 500; word-break: break-all; }
+.m-sub-note { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.m-sub-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.m-sub-amount { font-size: 16px; font-weight: 600; text-align: right; flex-shrink: 0; }
+.m-icon-btn { padding: 8px 10px; background: transparent; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 15px; color: var(--text); }
+.m-icon-btn.danger { color: var(--red); border-color: var(--red); }
+.m-history-btn {
+  padding: 7px 10px; border: 1px solid var(--accent);
+  border-radius: 8px; background: rgba(66,153,225,0.12);
+  color: var(--accent); cursor: pointer; font-size: 12px; white-space: nowrap;
+}
+.history-list { display: flex; flex-direction: column; gap: 10px; }
+.history-item {
+  padding: 12px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg);
+}
+.history-item-top { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.history-item-time { font-size: 12px; color: var(--text2); }
+.history-item-value { font-size: 16px; font-weight: 700; }
+.history-item-meta { font-size: 12px; color: var(--text2); line-height: 1.6; }
+.history-empty { color: var(--text2); font-size: 13px; text-align: center; padding: 24px 0; }
+.m-add-btn { width: 100%; padding: 14px; background: transparent; color: var(--accent); border: 1.5px dashed var(--accent); border-radius: 10px; font-size: 14px; cursor: pointer; margin-top: 4px; }
+.m-add-btn:active { background: rgba(66,153,225,0.1); }
+.m-action-bar { display: flex; gap: 12px; margin: 24px 0 60px 0; flex-wrap: wrap; }
+.m-big-btn {
+  flex: 1; min-width: 140px; padding: 18px;
+  font-size: 16px; font-weight: 600;
+  border: none; border-radius: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.m-big-btn .icon { font-size: 22px; }
+.m-upload { background: linear-gradient(135deg, #48bb78, #38a169); color: #fff; }
+.m-download { background: linear-gradient(135deg, #9f7aea, #805ad5); color: #fff; }
+.m-big-add { padding: 14px 20px; font-size: 15px; font-weight: 600; background: var(--accent); color: #fff; border: none; border-radius: 12px; cursor: pointer; }
+
+/* 历年收益模块 */
+.yearly-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.year-module {
+  border-radius: 16px;
+  padding: 20px 14px;
+  text-align: center;
+  cursor: pointer;
+  border: 2px solid var(--border);
+  background: var(--card);
+  position: relative;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: transform 0.12s, box-shadow 0.12s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+.year-module:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+.year-module.gain { background: linear-gradient(135deg, #f56565, #c53030); color: #fff; border-color: transparent; }
+.year-module.loss { background: linear-gradient(135deg, #4299e1, #2c5282); color: #fff; border-color: transparent; }
+.year-module.empty { border-style: dashed; color: var(--text2); }
+.year-label { font-size: 14px; font-weight: 600; margin-bottom: 8px; opacity: 0.92; }
+.year-amount { font-size: 19px; font-weight: 800; word-break: break-all; line-height: 1.2; }
+.year-amount .unit { font-size: 13px; font-weight: 600; opacity: 0.85; margin-left: 2px; }
+.year-sign-btn {
+  position: absolute; top: 8px; right: 8px;
+  width: 28px; height: 28px; border-radius: 8px;
+  background: rgba(255,255,255,0.25); color: inherit;
+  border: none; cursor: pointer;
+  font-size: 14px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.year-module.empty .year-sign-btn { background: var(--border); }
+.year-sign-btn:hover { background: rgba(255,255,255,0.4); }
+.year-delete-btn {
+  position: absolute; top: 8px; left: 8px;
+  width: 22px; height: 22px; border-radius: 6px;
+  background: rgba(0,0,0,0.25); color: inherit;
+  border: none; cursor: pointer; font-size: 12px;
+  display: none; align-items: center; justify-content: center;
+}
+.year-module:hover .year-delete-btn { display: flex; }
+@media (max-width: 768px) {
+  .yearly-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .year-module { padding: 16px 10px; min-height: 95px; }
+  .year-amount { font-size: 16px; }
+  .year-delete-btn { display: flex; }
+}
+
+/* Toast 通知系统 */
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast-item { padding: 12px 20px; border-radius: 8px; font-size: 14px; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transform: translateX(120%); opacity: 0; transition: transform 0.3s ease, opacity 0.3s ease; max-width: 360px; pointer-events: auto; backdrop-filter: blur(8px); }
+.toast-item.show { transform: translateX(0); opacity: 1; }
+.toast-success { background: rgba(56,161,105,0.95); }
+.toast-error { background: rgba(229,62,62,0.95); }
+.toast-info { background: rgba(49,130,206,0.95); }
+.toast-loading { background: rgba(113,128,150,0.9); }
+.btn-modern.loading { opacity: 0.6; pointer-events: none; }
+
+/* 手机端模态框输入更大 */
+@media (max-width: 768px) {
+  .modal { padding: 20px; }
+  .form-group input, .form-group select { padding: 12px 14px; font-size: 16px; border-radius: 10px; }
+  .form-group label { font-size: 14px; margin-bottom: 6px; }
+  .btn { padding: 12px 18px; font-size: 15px; }
+  .btn-sm { padding: 8px 12px; font-size: 13px; }
+}
+@media (max-width: 768px) {
+.chart-row { grid-template-columns: 1fr; }
+.overview-grid { grid-template-columns: repeat(2, 1fr); }
+.nav { gap: 4px; } .nav-btn { padding: 6px 10px; font-size: 12px; }
+.nav-right { gap: 4px; flex-wrap: wrap; }
+.btn-modern { font-size: 11px; padding: 6px 8px; }
+.m-sub-row { align-items: flex-start; }
+.m-sub-actions { flex-direction: column; align-items: stretch; }
+.m-history-btn { font-size: 11px; padding: 6px 8px; }
+.toast-container { top: 10px; right: 10px; left: 10px; }
+.toast-item { max-width: 100%; font-size: 13px; padding: 10px 16px; }
+}
+
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="nav">
+    <button class="nav-btn active" data-page="overview">总览</button>
+    <button class="nav-btn" data-page="mobile">📱 手机录入</button>
+    <button class="nav-btn" data-page="yearly">📊 历年收益</button>
+    <button class="nav-btn" data-page="classify">分类统计</button>
+    <button class="nav-btn" data-page="accounts">账户管理</button>
+    <button class="nav-btn" data-page="history">变更记录</button>
+    <div class="nav-right">
+      <span class="refresh-time" id="syncStatus"></span>
+      <span class="refresh-time" id="rateInfo"></span>
+      <span class="refresh-time" id="appVersion">v20260626-cf2</span>
+      <button class="btn-theme" id="themeToggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+      <button class="btn-modern btn-download" onclick="pullCloud()">📥 下载数据</button>
+      <button class="btn-modern btn-upload" onclick="pushCloud()">📤 上传数据</button>
+      <button class="btn btn-sm" style="background:var(--border);color:var(--text)" onclick="showSyncSettings()">☁ 同步设置</button>
+      <button class="btn btn-primary btn-sm" onclick="updateRates()">更新汇率</button>
+      <input id="importFile" type="file" accept="application/json" style="display:none" onchange="importData(event)">
+      <button class="btn btn-sm" style="background:var(--border);color:var(--text)" onclick="document.getElementById('importFile').click()" title="仅用于首次迁移或应急恢复">从文件恢复</button>
+      <button class="btn btn-sm" style="background:var(--border);color:var(--text)" onclick="exportData()">导出备份</button>
+      <button class="btn btn-sm btn-danger" onclick="clearAll()">清空</button>
+    </div>
+  </div>
+
+  <!-- 总览 -->
+  <div class="page active" id="page-overview">
+    <div class="card chart-card">
+      <h4 style="color:var(--text2);margin-bottom:12px">总资产趋势曲线</h4>
+      <canvas id="assetChart" style="width:100%;height:300px"></canvas>
+      <div class="chart-hint">点击曲线上的圆点可查看当天最终金额；曲线按每日最后一次上传数据生成，漏记日期会自动沿用上一日数值。</div>
+      <div class="chart-tooltip" id="assetChartTooltip"></div>
+    </div>
+    <div class="overview-grid" id="overviewCards"></div>
+    <div class="chart-row" id="overviewCharts"></div>
+  </div>
+
+  <!-- 手机录入 -->
+  <div class="page" id="page-mobile">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:8px;flex-wrap:wrap">
+      <h3 style="margin:0;font-size:18px">📱 录入数据</h3>
+      <button class="m-big-add" onclick="showAddAccount()">+ 添加账户</button>
+    </div>
+    <div id="mobileContent"></div>
+    <div class="m-action-bar">
+      <button class="m-big-btn m-download" onclick="pullCloud()"><span class="icon">📥</span>下载数据</button>
+      <button class="m-big-btn m-upload" onclick="pushCloud()"><span class="icon">📤</span>上传数据</button>
+    </div>
+    <p style="text-align:center;font-size:12px;color:var(--text2);margin-top:-30px;margin-bottom:30px">
+      点击下方任意子账户行可直接编辑金额；上传后可在"变更记录"页一键回滚
+    </p>
+  </div>
+
+  <!-- 分类统计 -->
+  <div class="page" id="page-classify">
+    <div id="classifyContent"></div>
+  </div>
+
+  <!-- 账户管理 -->
+  <div class="page" id="page-accounts">
+    <div style="margin-bottom:16px">
+      <button class="btn btn-primary btn-sm" onclick="showAddAccount()">+ 添加账户</button>
+    </div>
+    <div id="accountsContent"></div>
+  </div>
+
+  <!-- 历年收益 -->
+  <div class="page" id="page-yearly">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <h3 style="margin:0;font-size:18px">📊 历年收益一览</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="addNextYear()" style="padding:10px 16px">+ 添加下一年度</button>
+      </div>
+    </div>
+    <div class="yearly-grid" id="yearlyGrid"></div>
+    <div class="card" style="margin-top:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span style="color:var(--text2);font-size:14px">累计盈亏（所有年份合计）</span>
+        <span id="yearlyTotal" style="font-size:22px;font-weight:700">0.00 CNY</span>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:var(--text2);line-height:1.7">
+        点击任意年份模块可填写/编辑金额；右上角 ± 按钮可一键切换正负；
+        红色 = 盈利 (+)，蓝色 = 亏损 (−)，灰色虚线 = 未填。
+      </div>
+    </div>
+  </div>
+
+  <!-- 变更记录 -->
+  <div class="page" id="page-history">
+    <div class="card"><div class="table-wrap">
+      <table id="historyTable"><thead><tr>
+        <th>时间</th><th>类型</th><th>内容</th><th>操作</th>
+      </tr></thead><tbody></tbody></table>
+    </div></div>
+  </div>
+</div>
+
+<!-- 添加/编辑账户 -->
+<div class="modal-overlay" id="modalAccount">
+<div class="modal">
+  <h3 id="accountTitle">添加账户</h3>
+  <input type="hidden" id="editAccId">
+  <div class="form-group"><label>账户名称</label><input id="aName" placeholder="如 银行账户、券商账户、理财账户"></div>
+  <div class="form-group"><label>账户类型</label><select id="aType">
+    <option value="broker">券商</option>
+    <option value="bank">银行</option>
+    <option value="fund">基金/理财</option>
+    <option value="liability">负债 (房贷/车贷/信用卡等)</option>
+    <option value="other">其他</option>
+  </select></div>
+  <div class="form-group"><label>默认币种</label><select id="aCurrency">
+    <option value="CNY">人民币 CNY</option>
+    <option value="USD">美元 USD</option>
+    <option value="HKD">港币 HKD</option>
+    <option value="EUR">欧元 EUR</option>
+    <option value="JPY">日元 JPY</option>
+    <option value="GBP">英镑 GBP</option>
+  </select></div>
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="saveAccount()">保存</button>
+    <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeModal('modalAccount')">取消</button>
+  </div>
+</div>
+</div>
+
+<!-- 添加/编辑子账户 -->
+<div class="modal-overlay" id="modalSub">
+<div class="modal">
+  <h3 id="subTitle">添加子账户</h3>
+  <input type="hidden" id="editSubAccId">
+  <input type="hidden" id="editSubId">
+  <div class="form-group"><label>所属账户</label><input id="subAccName" disabled></div>
+  <div class="form-group"><label>子账户名称</label><input id="sName" placeholder="如 现金、持仓、基金账户"></div>
+  <div class="form-group"><label>金额</label><input id="sAmount" type="number" step="0.01" placeholder="0.00"></div>
+  <div class="form-group"><label>币种</label><select id="sCurrency">
+    <option value="CNY">人民币 CNY</option>
+    <option value="USD">美元 USD</option>
+    <option value="HKD">港币 HKD</option>
+    <option value="EUR">欧元 EUR</option>
+    <option value="JPY">日元 JPY</option>
+    <option value="GBP">英镑 GBP</option>
+  </select></div>
+  <div class="form-group"><label>备注 (可选)</label><input id="sNote" placeholder=""></div>
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="saveSub()">保存</button>
+    <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeModal('modalSub')">取消</button>
+  </div>
+</div>
+</div>
+
+<!-- 年度收益编辑 -->
+<div class="modal-overlay" id="modalYear">
+<div class="modal">
+  <h3 id="yearTitle">编辑年度收益</h3>
+  <input type="hidden" id="yEditingYear">
+  <div class="form-group"><label>年份</label><input id="yYear" type="number" placeholder="2024"></div>
+  <div class="form-group"><label>金额 (CNY)，填正数即可</label><input id="yAmount" type="number" step="0.01" placeholder="0.00"></div>
+  <div class="form-group">
+    <label>盈利 / 亏损</label>
+    <div style="display:flex;gap:10px">
+      <button type="button" id="ySignPlus" onclick="setYearSign('+')" style="flex:1;padding:16px;border:2px solid var(--border);border-radius:12px;background:transparent;color:var(--text);font-size:18px;font-weight:800;cursor:pointer">+ 盈利</button>
+      <button type="button" id="ySignMinus" onclick="setYearSign('-')" style="flex:1;padding:16px;border:2px solid var(--border);border-radius:12px;background:transparent;color:var(--text);font-size:18px;font-weight:800;cursor:pointer">− 亏损</button>
+    </div>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="saveYear()">保存</button>
+    <button class="btn btn-danger" onclick="deleteYear()">删除此年</button>
+    <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeModal('modalYear')">取消</button>
+  </div>
+</div>
+</div>
+
+<!-- 同步设置 -->
+<div class="modal-overlay" id="modalSync">
+<div class="modal">
+  <h3>云端同步设置</h3>
+  <p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:12px">
+    通过 Cloudflare Pages 后端保存私有数据。页面代码可以公开，资产数据只写入 Cloudflare KV。<br>
+    电脑和手机填写<strong>同一个同步密钥</strong>，一端修改后点「上传数据」，另一端点「下载数据」。<br>
+    <strong style="color:var(--orange)">注意</strong>：同步密钥等同于密码，不要公开分享。
+  </p>
+  <div class="form-group"><label>同步密钥</label><input id="syncSecret" type="password" autocomplete="off" placeholder="自己设一个长一点的密码"></div>
+  <div class="form-group">
+    <div style="color:var(--text2);font-size:13px;line-height:1.6;padding:8px 0">
+      💡 使用方式：<br>
+      ① 编辑数据 → 点「📤 上传数据」→ 保存到云端<br>
+      ② 另一台设备 → 点「📥 下载数据」→ 获取最新数据
+    </div>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="saveSyncSettings()">保存设置</button>
+    <button class="btn" style="background:var(--border);color:var(--text)" onclick="testCloudConnection()">测试连接</button>
+    <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeModal('modalSync')">取消</button>
+  </div>
+</div>
+</div>
+
+<!-- 子账户录入历史 -->
+<div class="modal-overlay" id="modalSubHistory">
+<div class="modal">
+  <h3 id="subHistoryTitle">录入历史</h3>
+  <div id="subHistoryContent" class="history-list"></div>
+  <div class="btn-group">
+    <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeModal('modalSubHistory')">关闭</button>
+  </div>
+</div>
+</div>
+
+<script>
+const DB_KEY = 'assetDashboardV2';
+let RATES = { CNY: 1, USD: 7.20, HKD: 0.92, EUR: 7.80, JPY: 0.048, GBP: 9.10 };
+let _assetChartPoints = [];
+let _assetChartActiveIndex = -1;
+
+function loadDB() {
+  const raw = localStorage.getItem(DB_KEY);
+  if (raw) {
+    const d = JSON.parse(raw);
+    d.accounts = d.accounts || [];
+    d.history = d.history || [];
+    d.assetHistory = d.assetHistory || [];
+    d.subAccountHistory = d.subAccountHistory || [];
+    d.assetHistoryMode = d.assetHistoryMode || 'upload-only';
+    return d;
+  }
+  return { accounts: [], history: [], assetHistory: [], subAccountHistory: [], assetHistoryMode: 'upload-only', lastRateUpdate: null };
+}
+function saveDB() { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+let db = loadDB();
+if (db.rates) RATES = Object.assign(RATES, db.rates);
+
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getLocalNowIso() {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+}
+
+function formatDateTimeText(iso) {
+  if (!iso) return '未知时间';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString('zh-CN');
+}
+
+function ensureDataShape(target) {
+  target.accounts = Array.isArray(target.accounts) ? target.accounts : [];
+  target.history = Array.isArray(target.history) ? target.history : [];
+  target.assetHistory = Array.isArray(target.assetHistory) ? target.assetHistory : [];
+  target.yearlyReturns = Array.isArray(target.yearlyReturns) ? target.yearlyReturns : [];
+  target.subAccountHistory = Array.isArray(target.subAccountHistory) ? target.subAccountHistory : [];
+  target.assetHistoryMode = target.assetHistoryMode || 'upload-only';
+  return target;
+}
+
+function getCurrentNetAsset() {
+  return calcTotals().totalCNY;
+}
+
+function recordSubAccountHistory(acc, sub, amount, currency, action) {
+  if (!Array.isArray(db.subAccountHistory)) db.subAccountHistory = [];
+  db.subAccountHistory.unshift({
+    id: genId('sh'),
+    accountId: acc.id,
+    accountName: acc.name,
+    subId: sub.id,
+    subName: sub.name,
+    amount: Number(amount) || 0,
+    currency,
+    netCNY: getCurrentNetAsset(),
+    action,
+    recordedAt: getLocalNowIso(),
+    recordedDate: getTodayKey()
+  });
+  if (db.subAccountHistory.length > 3000) db.subAccountHistory = db.subAccountHistory.slice(0, 3000);
+}
+
+function upsertAssetHistoryEntry(date, value, pushedAt) {
+  if (!Array.isArray(db.assetHistory)) db.assetHistory = [];
+  const entry = {
+    date,
+    value: Number(value) || 0,
+    pushedAt: pushedAt || getLocalNowIso(),
+    source: 'upload'
+  };
+  const existing = db.assetHistory.find(item => item.date === date);
+  if (existing) Object.assign(existing, entry);
+  else db.assetHistory.push(entry);
+  db.assetHistory.sort((a, b) => a.date.localeCompare(b.date));
+  if (db.assetHistory.length > 730) db.assetHistory = db.assetHistory.slice(-730);
+}
+
+function getCanonicalAssetHistory() {
+  return (db.assetHistory || [])
+    .filter(item => item && item.date)
+    .map(item => ({
+      date: item.date,
+      value: Number(item.value) || 0,
+      pushedAt: item.pushedAt || item.time || '',
+      source: item.source || 'upload'
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function getFilledAssetHistory() {
+  const source = getCanonicalAssetHistory();
+  if (source.length === 0) return [];
+  const filled = [];
+  let cursor = new Date(source[0].date + 'T00:00:00');
+  const end = new Date(source[source.length - 1].date + 'T00:00:00');
+  let idx = 0;
+  let active = source[0];
+  while (cursor <= end) {
+    const key = cursor.toISOString().slice(0, 10);
+    while (idx + 1 < source.length && source[idx + 1].date <= key) {
+      idx += 1;
+      active = source[idx];
+    }
+    filled.push({
+      date: key,
+      value: active.value,
+      pushedAt: active.pushedAt,
+      sourceDate: active.date,
+      isCarried: active.date !== key
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return filled;
+}
+
+function getLatestUploadedValue() {
+  const history = getCanonicalAssetHistory();
+  return history.length > 0 ? history[history.length - 1].value : null;
+}
+
+function getPrevUploadedValue() {
+  const history = getCanonicalAssetHistory();
+  return history.length > 1 ? history[history.length - 2].value : null;
+}
+
+function migrateLegacyData() {
+  const wasLegacyMode = !db.assetHistoryMode || db.assetHistoryMode !== 'upload-only';
+  ensureDataShape(db);
+  db.accounts.forEach(acc => {
+    acc.subAccounts = Array.isArray(acc.subAccounts) ? acc.subAccounts : [];
+  });
+  db.assetHistory = (db.assetHistory || [])
+    .filter(item => item && item.date)
+    .map(item => ({
+      date: item.date,
+      value: Number(item.value) || 0,
+      pushedAt: item.pushedAt || item.time || '',
+      source: 'upload'
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .reduce((list, item) => {
+      const prev = list[list.length - 1];
+      if (prev && prev.date === item.date) list[list.length - 1] = item;
+      else list.push(item);
+      return list;
+    }, []);
+  if (wasLegacyMode && db.assetHistory.length > 0) {
+    const last = db.assetHistory[db.assetHistory.length - 1];
+    if (last && last.date === getTodayKey() && !last.pushedAt) {
+      db.assetHistory.pop();
+    }
+  }
+}
+
+async function updateRates() {
+  try {
+    const resp = await fetch('https://api.exchangerate-api.com/v4/latest/CNY');
+    const json = await resp.json();
+    if (json && json.rates) {
+      ['USD','HKD','EUR','JPY','GBP'].forEach(c => {
+        if (json.rates[c]) RATES[c] = 1 / json.rates[c];
+      });
+      db.rates = RATES;
+      db.lastRateUpdate = new Date().toLocaleString('zh-CN');
+      saveDB();
+      renderAll();
+      updateRateInfo();
+    }
+  } catch(e) { console.log('汇率获取失败，使用默认值'); }
+}
+
+function fmt(n) {
+  if (typeof n !== 'number' || isNaN(n)) return '0.00';
+  return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function toCNY(amount, currency) { return (Number(amount) || 0) * (RATES[currency] || 1); }
+function genId(prefix) { return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,6); }
+
+function addHistory(type, content) {
+  db.history.unshift({
+    id: genId('h'),
+    time: new Date().toLocaleString('zh-CN'),
+    type, content
+  });
+  if (db.history.length > 500) db.history = db.history.slice(0, 500);
+}
+
+// 导航
+document.querySelectorAll('.nav-btn[data-page]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('page-' + btn.dataset.page).classList.add('active');
+    renderAll();
+  });
+});
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function showModal(id) { document.getElementById(id).classList.add('show'); }
+
+// ====== 账户 CRUD ======
+function showAddAccount() {
+  document.getElementById('accountTitle').textContent = '添加账户';
+  document.getElementById('editAccId').value = '';
+  document.getElementById('aName').value = '';
+  document.getElementById('aType').value = 'broker';
+  document.getElementById('aCurrency').value = 'CNY';
+  showModal('modalAccount');
+}
+function showEditAccount(id) {
+  const acc = db.accounts.find(a => a.id === id);
+  if (!acc) return;
+  document.getElementById('accountTitle').textContent = '编辑账户';
+  document.getElementById('editAccId').value = id;
+  document.getElementById('aName').value = acc.name;
+  document.getElementById('aType').value = acc.type;
+  document.getElementById('aCurrency').value = acc.currency;
+  showModal('modalAccount');
+}
+function saveAccount() {
+  const id = document.getElementById('editAccId').value;
+  const data = {
+    name: document.getElementById('aName').value.trim(),
+    type: document.getElementById('aType').value,
+    currency: document.getElementById('aCurrency').value
+  };
+  if (!data.name) { alert('请输入账户名称'); return; }
+  if (id) {
+    const acc = db.accounts.find(a => a.id === id);
+    if (acc) Object.assign(acc, data);
+    addHistory('修改', `修改账户: ${data.name}`);
+  } else {
+    data.id = genId('acc');
+    data.subAccounts = [];
+    db.accounts.push(data);
+    addHistory('新增', `新增账户: ${data.name} (${data.currency})`);
+  }
+  saveDB();
+  closeModal('modalAccount');
+  renderAll();
+}
+function deleteAccount(id) {
+  const acc = db.accounts.find(a => a.id === id);
+  if (!acc) return;
+  if (!confirm(`确定删除账户「${acc.name}」？\n其下 ${(acc.subAccounts||[]).length} 个子账户也会被一并删除。`)) return;
+  db.accounts = db.accounts.filter(a => a.id !== id);
+  addHistory('删除', `删除账户: ${acc.name}`);
+  saveDB();
+  renderAll();
+}
+
+// ====== 子账户 CRUD ======
+function showAddSub(accId) {
+  const acc = db.accounts.find(a => a.id === accId);
+  if (!acc) return;
+  const isLiab = acc.type === 'liability';
+  document.getElementById('subTitle').textContent = (isLiab ? '添加负债项 - ' : '添加子账户 - ') + acc.name;
+  document.getElementById('editSubAccId').value = accId;
+  document.getElementById('editSubId').value = '';
+  document.getElementById('subAccName').value = acc.name + (isLiab ? '  (负债类型 · 金额将作为负值参与总资产计算)' : '');
+  document.getElementById('sName').value = '';
+  document.getElementById('sAmount').value = '';
+  document.getElementById('sCurrency').value = acc.currency || 'CNY';
+  document.getElementById('sNote').value = '';
+  showModal('modalSub');
+}
+function showEditSub(accId, subId) {
+  const acc = db.accounts.find(a => a.id === accId);
+  if (!acc) return;
+  const sub = (acc.subAccounts || []).find(s => s.id === subId);
+  if (!sub) return;
+  const isLiab = acc.type === 'liability';
+  document.getElementById('subTitle').textContent = (isLiab ? '编辑负债项 - ' : '编辑子账户 - ') + acc.name;
+  document.getElementById('editSubAccId').value = accId;
+  document.getElementById('editSubId').value = subId;
+  document.getElementById('subAccName').value = acc.name + (isLiab ? '  (负债类型)' : '');
+  document.getElementById('sName').value = sub.name;
+  document.getElementById('sAmount').value = Math.abs(Number(sub.amount) || 0);
+  document.getElementById('sCurrency').value = sub.currency || acc.currency;
+  document.getElementById('sNote').value = sub.note || '';
+  showModal('modalSub');
+}
+function saveSub() {
+  const accId = document.getElementById('editSubAccId').value;
+  const subId = document.getElementById('editSubId').value;
+  const acc = db.accounts.find(a => a.id === accId);
+  if (!acc) return;
+  if (!Array.isArray(acc.subAccounts)) acc.subAccounts = [];
+  const data = {
+    name: document.getElementById('sName').value.trim(),
+    amount: parseFloat(document.getElementById('sAmount').value) || 0,
+    currency: document.getElementById('sCurrency').value,
+    note: document.getElementById('sNote').value.trim()
+  };
+  if (!data.name) { alert('请输入子账户名称'); return; }
+  if (subId) {
+    const sub = acc.subAccounts.find(s => s.id === subId);
+    const oldAmt = sub ? sub.amount : 0;
+    if (sub) {
+      Object.assign(sub, data);
+      recordSubAccountHistory(acc, sub, data.amount, data.currency, 'edit');
+    }
+    addHistory('修改', `${acc.name} / ${data.name}: ${fmt(oldAmt)} → ${fmt(data.amount)} ${data.currency}`);
+  } else {
+    data.id = genId('sub');
+    acc.subAccounts.push(data);
+    recordSubAccountHistory(acc, data, data.amount, data.currency, 'create');
+    addHistory('新增', `${acc.name} / ${data.name} = ${fmt(data.amount)} ${data.currency}`);
+  }
+  saveDB();
+  closeModal('modalSub');
+  renderAll();
+}
+function deleteSub(accId, subId) {
+  const acc = db.accounts.find(a => a.id === accId);
+  if (!acc) return;
+  const sub = (acc.subAccounts || []).find(s => s.id === subId);
+  if (!sub) return;
+  if (!confirm(`确定删除子账户「${sub.name}」？`)) return;
+  acc.subAccounts = acc.subAccounts.filter(s => s.id !== subId);
+  addHistory('删除', `删除子账户: ${acc.name} / ${sub.name}`);
+  saveDB();
+  renderAll();
+}
+
+// ====== 计算 ======
+function calcTotals() {
+  let totalAssets = 0;
+  let totalLiabilities = 0; // 负债总额，正数表示
+  const byCurr = {};        // 资产按币种
+  const byCurrLiab = {};    // 负债按币种
+  db.accounts.forEach(acc => {
+    const isLiab = acc.type === 'liability';
+    (acc.subAccounts || []).forEach(sub => {
+      const c = sub.currency || acc.currency || 'CNY';
+      const amt = Math.abs(Number(sub.amount) || 0); // 用户填正数即可，负债类账户自动当负值
+      const cny = toCNY(amt, c);
+      if (isLiab) {
+        totalLiabilities += cny;
+        byCurrLiab[c] = (byCurrLiab[c] || 0) + amt;
+      } else {
+        totalAssets += cny;
+        byCurr[c] = (byCurr[c] || 0) + amt;
+      }
+    });
+  });
+  return {
+    totalAssets,
+    totalLiabilities,
+    totalCNY: totalAssets - totalLiabilities, // 净资产
+    byCurr,
+    byCurrLiab
+  };
+}
+
+function calcTotalsForData(data) {
+  const oldDb = db;
+  const oldRates = RATES;
+  try {
+    db = {
+      accounts: data.accounts || [],
+      history: data.history || [],
+      assetHistory: data.assetHistory || [],
+      yearlyReturns: data.yearlyReturns || [],
+      subAccountHistory: data.subAccountHistory || [],
+      assetHistoryMode: data.assetHistoryMode || 'upload-only',
+      rates: data.rates || oldRates
+    };
+    if (data.rates) RATES = Object.assign({}, oldRates, data.rates);
+    return calcTotals();
+  } finally {
+    db = oldDb;
+    RATES = oldRates;
+  }
+}
+
+function dataSummary(data) {
+  const totals = calcTotalsForData(data);
+  const history = Array.isArray(data.assetHistory) ? [...data.assetHistory] : [];
+  history.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  return {
+    netCNY: totals.totalCNY,
+    accounts: (data.accounts || []).length,
+    subAccounts: (data.accounts || []).reduce((s, a) => s + (a.subAccounts || []).length, 0),
+    assetDate: history.length > 0 ? history[history.length - 1].date : '无',
+    pushedAt: data._pushedAt || '未知'
+  };
+}
+
+function summaryText(label, summary) {
+  return `${label}: ${fmt(summary.netCNY)} CNY，${summary.accounts} 个账户 / ${summary.subAccounts} 个子账户，曲线日期 ${summary.assetDate}`;
+}
+
+// ====== 总览 ======
+function renderOverview() {
+  const totals = calcTotals();
+  const { totalCNY, totalAssets, totalLiabilities, byCurr, byCurrLiab } = totals;
+  const latestUploaded = getLatestUploadedValue();
+  const previousUploaded = getPrevUploadedValue();
+  const shownTotal = latestUploaded == null ? totalCNY : latestUploaded;
+  const yesterday = previousUploaded == null ? shownTotal : previousUploaded;
+  const dayChange = shownTotal - yesterday;
+  const dayChangePct = yesterday !== 0 ? (dayChange / yesterday * 100) : 0;
+
+  const cards = [];
+  cards.push({
+    title: '总资产 净值 (CNY)',
+    value: fmt(shownTotal),
+    extra: `<div class="card-change ${dayChange>=0?'up':'down'}">较上一日 ${dayChange>=0?'+':'-'}${fmt(Math.abs(dayChange))} (${dayChange>=0?'+':'-'}${Math.abs(dayChangePct).toFixed(2)}%)</div>`
+  });
+  cards.push({
+    title: '昨日总资产',
+    value: fmt(yesterday)
+  });
+  cards.push({
+    title: '较上一日变化',
+    value: (dayChange>=0?'+':'-') + fmt(Math.abs(dayChange)),
+    extra: `<div class="card-change ${dayChange>=0?'up':'down'}">${dayChange>=0?'+':'-'}${Math.abs(dayChangePct).toFixed(2)}%</div>`,
+    valueColor: dayChange >= 0 ? 'var(--red)' : 'var(--green)'
+  });
+  // 资产总额（不含负债）
+  cards.push({
+    title: '资产总额 (CNY)',
+    value: fmt(totalAssets),
+    extra: `<div class="card-change" style="color:var(--text2)">未扣负债</div>`
+  });
+  // 负债总额（仅当有负债时显示）
+  if (totalLiabilities > 0) {
+    cards.push({
+      title: '负债总额 (CNY)',
+      value: '-' + fmt(totalLiabilities),
+      extra: `<div class="card-change" style="color:var(--orange)">已从总资产中扣除</div>`,
+      valueColor: 'var(--orange)'
+    });
+  }
+
+  // 按币种小计（资产）
+  Object.entries(byCurr).forEach(([c, v]) => {
+    cards.push({
+      title: c + ' 资产小计',
+      value: fmt(v) + ' ' + c,
+      extra: `<div class="card-change" style="color:var(--text2)">≈ ${fmt(toCNY(v, c))} CNY</div>`
+    });
+  });
+  // 按币种小计（负债）
+  Object.entries(byCurrLiab).forEach(([c, v]) => {
+    cards.push({
+      title: c + ' 负债小计',
+      value: '-' + fmt(v) + ' ' + c,
+      extra: `<div class="card-change" style="color:var(--orange)">≈ -${fmt(toCNY(v, c))} CNY</div>`,
+      valueColor: 'var(--orange)'
+    });
+  });
+
+  document.getElementById('overviewCards').innerHTML = cards.map(c => `
+    <div class="card">
+      <div class="card-title">${c.title}</div>
+      <div class="card-value" ${c.valueColor ? `style="color:${c.valueColor}"` : ''}>${c.value}</div>
+      ${c.extra || ''}
+    </div>
+  `).join('');
+
+  // 饼图：币种分布 + 账户分布（仅资产部分）
+  const colors = ['#4299e1','#ed8936','#48bb78','#ecc94b','#9f7aea','#f56565','#38b2ac','#d69e2e'];
+  const currencyPie = Object.entries(byCurr).map(([c, v], i) => ({
+    label: c, value: toCNY(v, c), color: colors[i % colors.length]
+  })).filter(d => d.value > 0);
+
+  const accountPie = db.accounts.filter(a => a.type !== 'liability').map((acc, i) => ({
+    label: acc.name,
+    value: (acc.subAccounts || []).reduce((s, sub) => s + toCNY(Math.abs(sub.amount), sub.currency || acc.currency), 0),
+    color: colors[i % colors.length]
+  })).filter(d => d.value > 0);
+
+  document.getElementById('overviewCharts').innerHTML = `
+    <div class="chart-box"><h4 style="color:var(--text2);margin-bottom:12px">资产币种分布</h4>${renderPie(currencyPie)}</div>
+    <div class="chart-box"><h4 style="color:var(--text2);margin-bottom:12px">资产账户分布</h4>${renderPie(accountPie)}</div>
+  `;
+
+  renderAssetChart();
+}
+
+function renderPie(data) {
+  if (data.length === 0) return '<p style="color:var(--text2);font-size:13px">暂无数据</p>';
+  const total = data.reduce((s, d) => s + d.value, 0);
+  let cum = 0;
+  const parts = data.map(d => {
+    const pct = d.value / total * 100;
+    const start = cum;
+    cum += pct;
+    return `${d.color} ${start}% ${cum}%`;
+  });
+  const legend = data.map(d => `<div class="legend-item"><span class="legend-dot" style="background:${d.color}"></span>${d.label}: ${fmt(d.value)} (${(d.value/total*100).toFixed(1)}%)</div>`).join('');
+  return `<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+    <div class="pie-chart" style="background:conic-gradient(${parts.join(',')})"></div>
+    <div class="legend">${legend}</div>
+  </div>`;
+}
+
+function renderAssetChart() {
+  const canvas = document.getElementById('assetChart');
+  if (!canvas) return;
+  const data = getFilledAssetHistory();
+  const tooltip = document.getElementById('assetChartTooltip');
+  _assetChartPoints = [];
+  canvas.width = canvas.offsetWidth * 2;
+  canvas.height = canvas.offsetHeight * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  const w = canvas.offsetWidth, h = canvas.offsetHeight;
+
+  // 读取当前主题色
+  const css = getComputedStyle(document.documentElement);
+  const bgColor = css.getPropertyValue('--card').trim() || '#1a2332';
+  const gridColor = css.getPropertyValue('--border').trim() || '#2d3748';
+  const textColor = css.getPropertyValue('--text2').trim() || '#a0aec0';
+  const lineColor = css.getPropertyValue('--accent').trim() || '#4299e1';
+
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, w, h);
+
+  if (data.length === 0) {
+    if (tooltip) tooltip.style.display = 'none';
+    ctx.fillStyle = textColor;
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('暂无上传历史，完成上传后这里会显示每日最终总资产', w/2, h/2);
+    return;
+  }
+
+  const padding = { top: 20, right: 20, bottom: 40, left: 80 };
+  const cW = w - padding.left - padding.right;
+  const cH = h - padding.top - padding.bottom;
+  const values = data.map(d => d.value);
+  const minV = Math.min(...values);
+  const maxV = Math.max(...values);
+  const range = maxV - minV || Math.max(1, maxV * 0.05);
+  const yMin = minV - range * 0.1;
+  const yMax = maxV + range * 0.1;
+
+  // 网格 + Y 标签
+  ctx.strokeStyle = gridColor;
+  ctx.lineWidth = 1;
+  ctx.fillStyle = textColor;
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 5; i++) {
+    const y = padding.top + (cH/5)*i;
+    ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(padding.left+cW, y); ctx.stroke();
+    const val = yMax - (yMax-yMin)/5*i;
+    ctx.fillText(fmt(val), padding.left - 5, y + 4);
+  }
+
+  // 折线
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const denom = Math.max(1, data.length - 1);
+  data.forEach((d, i) => {
+    const x = padding.left + (cW / denom) * i;
+    const y = padding.top + cH - ((d.value - yMin) / (yMax - yMin)) * cH;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    _assetChartPoints.push({ x, y, data: d, index: i });
+  });
+  ctx.stroke();
+
+  // 渐变填充
+  const grad = ctx.createLinearGradient(0, padding.top, 0, padding.top + cH);
+  grad.addColorStop(0, 'rgba(66,153,225,0.3)');
+  grad.addColorStop(1, 'rgba(66,153,225,0.02)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  data.forEach((d, i) => {
+    const x = padding.left + (cW / denom) * i;
+    const y = padding.top + cH - ((d.value - yMin) / (yMax - yMin)) * cH;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.lineTo(padding.left + cW, padding.top + cH);
+  ctx.lineTo(padding.left, padding.top + cH);
+  ctx.closePath();
+  ctx.fill();
+
+  // 数据点
+  ctx.fillStyle = lineColor;
+  data.forEach((d, i) => {
+    const x = padding.left + (cW / denom) * i;
+    const y = padding.top + cH - ((d.value - yMin) / (yMax - yMin)) * cH;
+    ctx.beginPath(); ctx.arc(x, y, _assetChartActiveIndex === i ? 5 : 3, 0, Math.PI*2); ctx.fill();
+    if (_assetChartActiveIndex === i) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 7, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 2;
+    }
+  });
+
+  // X 轴日期
+  ctx.fillStyle = textColor;
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  const step = Math.ceil(data.length / 7);
+  data.forEach((d, i) => {
+    if (i % step === 0 || i === data.length - 1) {
+      const x = padding.left + (cW / denom) * i;
+      ctx.fillText(d.date.slice(5), x, h - 10);
+    }
+  });
+}
+
+function showAssetChartTooltip(index) {
+  const canvas = document.getElementById('assetChart');
+  const tooltip = document.getElementById('assetChartTooltip');
+  const point = _assetChartPoints[index];
+  if (!canvas || !tooltip || !point) return;
+  _assetChartActiveIndex = index;
+  tooltip.innerHTML = `
+    <div class="chart-tooltip-date">${point.data.date}${point.data.isCarried ? '（沿用上一上传日）' : '（当日最终上传）'}</div>
+    <div class="chart-tooltip-value">${fmt(point.data.value)} CNY</div>
+    <div class="chart-tooltip-meta">${point.data.isCarried ? `源数据日期：${point.data.sourceDate}` : `上传时间：${formatDateTimeText(point.data.pushedAt)}`}</div>
+  `;
+  const left = Math.min(Math.max(point.x + 18, 12), Math.max(12, canvas.offsetWidth - 200));
+  const top = Math.max(16, point.y - 78);
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+  tooltip.style.display = 'block';
+  renderAssetChart();
+}
+
+function hideAssetChartTooltip(shouldRender) {
+  const tooltip = document.getElementById('assetChartTooltip');
+  if (_assetChartActiveIndex === -1 && !shouldRender) return;
+  _assetChartActiveIndex = -1;
+  if (tooltip) tooltip.style.display = 'none';
+  if (shouldRender !== false) renderAssetChart();
+}
+
+function findAssetChartPoint(clientX, clientY) {
+  const canvas = document.getElementById('assetChart');
+  if (!canvas || _assetChartPoints.length === 0) return null;
+  const rect = canvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  let best = null;
+  _assetChartPoints.forEach(point => {
+    const dist = Math.hypot(point.x - x, point.y - y);
+    if (dist <= 18 && (!best || dist < best.dist)) best = { index: point.index, dist };
+  });
+  return best ? best.index : null;
+}
+
+// ====== 分类统计 ======
+function renderClassify() {
+  let html = '';
+  const { totalCNY, totalAssets, totalLiabilities, byCurr, byCurrLiab } = calcTotals();
+  const TYPE_LABELS = { broker: '券商', bank: '银行', fund: '基金/理财', liability: '负债', other: '其他' };
+
+  // 汇率
+  html += `<div class="card"><h4 style="color:var(--text2);margin-bottom:12px">当前汇率（相对 CNY）</h4>
+    <div style="font-size:13px;color:var(--text2);line-height:1.8">`;
+  Object.entries(RATES).forEach(([c, r]) => {
+    if (c !== 'CNY') html += `1 ${c} = ${r.toFixed(4)} CNY &nbsp;&nbsp; `;
+  });
+  if (db.lastRateUpdate) html += `<br>最后更新: ${db.lastRateUpdate}`;
+  html += `</div></div>`;
+
+  // 净资产汇总
+  html += `<div class="card"><h4 style="color:var(--text2);margin-bottom:12px">净资产汇总</h4>
+    <div class="table-wrap"><table><tbody>
+      <tr><td>资产总额</td><td style="color:var(--green)">${fmt(totalAssets)} CNY</td></tr>
+      <tr><td>负债总额</td><td style="color:var(--orange)">-${fmt(totalLiabilities)} CNY</td></tr>
+      <tr style="font-weight:700;border-top:2px solid var(--border)"><td>净资产 (CNY)</td><td>${fmt(totalCNY)} CNY</td></tr>
+    </tbody></table></div></div>`;
+
+  // 按币种（资产）
+  html += `<div class="card"><h4 style="color:var(--text2);margin-bottom:12px">资产 - 按币种统计</h4>
+    <div class="table-wrap"><table><thead><tr><th>币种</th><th>原币金额</th><th>折合 CNY</th><th>占比</th></tr></thead><tbody>`;
+  const currEntries = Object.entries(byCurr).sort((a,b) => toCNY(b[1],b[0]) - toCNY(a[1],a[0]));
+  currEntries.forEach(([c, v]) => {
+    const cnyV = toCNY(v, c);
+    const pct = totalAssets > 0 ? (cnyV / totalAssets * 100) : 0;
+    html += `<tr><td><strong>${c}</strong></td><td>${fmt(v)} ${c}</td><td>${fmt(cnyV)} CNY</td><td>${pct.toFixed(2)}%</td></tr>`;
+  });
+  html += `<tr style="font-weight:700;border-top:2px solid var(--border)"><td>合计</td><td>-</td><td>${fmt(totalAssets)} CNY</td><td>100%</td></tr>`;
+  html += `</tbody></table></div></div>`;
+
+  // 按币种（负债）
+  if (totalLiabilities > 0) {
+    html += `<div class="card" style="border-left:4px solid var(--orange)"><h4 style="color:var(--orange);margin-bottom:12px">负债 - 按币种统计</h4>
+      <div class="table-wrap"><table><thead><tr><th>币种</th><th>原币金额</th><th>折合 CNY</th></tr></thead><tbody>`;
+    Object.entries(byCurrLiab).sort((a,b) => toCNY(b[1],b[0]) - toCNY(a[1],a[0])).forEach(([c, v]) => {
+      html += `<tr style="color:var(--orange)"><td><strong>${c}</strong></td><td>-${fmt(v)} ${c}</td><td>-${fmt(toCNY(v,c))} CNY</td></tr>`;
+    });
+    html += `<tr style="font-weight:700;border-top:2px solid var(--border);color:var(--orange)"><td>合计</td><td>-</td><td>-${fmt(totalLiabilities)} CNY</td></tr>`;
+    html += `</tbody></table></div></div>`;
+  }
+
+  // 按账户
+  html += `<div class="card"><h4 style="color:var(--text2);margin-bottom:12px">按账户统计</h4>
+    <div class="table-wrap"><table><thead><tr><th>账户</th><th>类型</th><th>默认币种</th><th>子账户数</th><th>合计 CNY</th><th>占比 (相对资产)</th></tr></thead><tbody>`;
+  const accStats = db.accounts.map(acc => {
+    const sign = acc.type === 'liability' ? -1 : 1;
+    const cny = (acc.subAccounts || []).reduce((s, sub) => s + sign * toCNY(Math.abs(Number(sub.amount)||0), sub.currency || acc.currency), 0);
+    return { acc, cny, isLiab: acc.type === 'liability' };
+  }).sort((a,b) => b.cny - a.cny);
+  accStats.forEach(({ acc, cny, isLiab }) => {
+    const pct = totalAssets > 0 ? (Math.abs(cny) / totalAssets * 100) : 0;
+    const typeLabel = TYPE_LABELS[acc.type] || acc.type;
+    html += `<tr ${isLiab?'style="color:var(--orange)"':''}><td>${acc.name}</td><td>${typeLabel}</td><td>${acc.currency}</td><td>${(acc.subAccounts||[]).length}</td><td>${isLiab?'-':''}${fmt(Math.abs(cny))}</td><td>${pct.toFixed(2)}%</td></tr>`;
+  });
+  html += `<tr style="font-weight:700;border-top:2px solid var(--border)"><td colspan="4">净资产合计</td><td>${fmt(totalCNY)}</td><td>-</td></tr>`;
+  html += `</tbody></table></div></div>`;
+
+  // 按账户类型
+  html += `<div class="card"><h4 style="color:var(--text2);margin-bottom:12px">按账户类型统计</h4>
+    <div class="table-wrap"><table><thead><tr><th>类型</th><th>账户数</th><th>合计 CNY</th></tr></thead><tbody>`;
+  const typeStats = {};
+  db.accounts.forEach(acc => {
+    const t = acc.type || 'other';
+    const sign = t === 'liability' ? -1 : 1;
+    if (!typeStats[t]) typeStats[t] = { count: 0, cny: 0 };
+    typeStats[t].count += 1;
+    typeStats[t].cny += sign * (acc.subAccounts || []).reduce((s, sub) => s + toCNY(Math.abs(Number(sub.amount)||0), sub.currency || acc.currency), 0);
+  });
+  Object.entries(typeStats).sort((a,b) => b[1].cny - a[1].cny).forEach(([t, s]) => {
+    const typeLabel = TYPE_LABELS[t] || t;
+    const isLiab = t === 'liability';
+    html += `<tr ${isLiab?'style="color:var(--orange)"':''}><td>${typeLabel}</td><td>${s.count}</td><td>${isLiab?'-':''}${fmt(Math.abs(s.cny))}</td></tr>`;
+  });
+  html += `</tbody></table></div></div>`;
+
+  if (db.accounts.length === 0) {
+    html = `<div class="card"><p style="color:var(--text2)">暂无数据，请先到「账户管理」添加账户和子账户。</p></div>`;
+  }
+  document.getElementById('classifyContent').innerHTML = html;
+}
+
+// ====== 账户管理 ======
+function renderAccounts() {
+  let html = '';
+  if (db.accounts.length === 0) {
+    html = `<div class="card"><p style="color:var(--text2)">还没有账户，点击上方"+ 添加账户"开始。</p></div>`;
+    document.getElementById('accountsContent').innerHTML = html;
+    return;
+  }
+  const TYPE_LABELS = { broker: '券商', bank: '银行', fund: '基金/理财', liability: '负债', other: '其他' };
+  db.accounts.forEach(acc => {
+    const isLiab = acc.type === 'liability';
+    const accCNY = (acc.subAccounts || []).reduce((s, sub) => s + toCNY(Math.abs(Number(sub.amount)||0), sub.currency || acc.currency), 0);
+    const byCurr = {};
+    (acc.subAccounts || []).forEach(sub => {
+      const c = sub.currency || acc.currency;
+      byCurr[c] = (byCurr[c] || 0) + Math.abs(Number(sub.amount) || 0);
+    });
+    const sign = isLiab ? '-' : '';
+    const subtotals = Object.entries(byCurr).map(([c, v]) => `${sign}${fmt(v)} ${c}`).join('  +  ') || '无子账户';
+    const typeLabel = TYPE_LABELS[acc.type] || acc.type;
+    const valColor = isLiab ? 'var(--orange)' : 'var(--text)';
+
+    html += `<div class="card" ${isLiab ? 'style="border-left:4px solid var(--orange)"' : ''}>
+      <div class="acc-header">
+        <div>
+          <h4 style="margin-bottom:4px">${acc.name} <span style="font-size:12px;color:var(--text2);font-weight:normal">[${typeLabel} · 默认 ${acc.currency}]</span></h4>
+          <div style="font-size:12px;color:var(--text2)">子账户小计: ${subtotals} &nbsp;|&nbsp; 合计 ≈ <strong style="color:${valColor}">${sign}${fmt(accCNY)} CNY</strong></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-primary" onclick="showAddSub('${acc.id}')">+ ${isLiab?'负债项':'子账户'}</button>
+          <button class="btn btn-sm" style="background:var(--border);color:var(--text)" onclick="showEditAccount('${acc.id}')">编辑</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteAccount('${acc.id}')">删除账户</button>
+        </div>
+      </div>`;
+    if ((acc.subAccounts || []).length > 0) {
+      html += `<div class="table-wrap"><table><thead><tr>
+        <th>${isLiab?'负债项':'子账户'}</th><th>金额</th><th>币种</th><th>折合 CNY</th><th>备注</th><th>操作</th>
+      </tr></thead><tbody>`;
+      acc.subAccounts.forEach(sub => {
+        const c = sub.currency || acc.currency;
+        const amt = Math.abs(Number(sub.amount)||0);
+        const cnyVal = toCNY(amt, c);
+        html += `<tr ${isLiab?'style="color:var(--orange)"':''}>
+          <td>${sub.name}</td>
+          <td>${sign}${fmt(amt)}</td>
+          <td>${c}</td>
+          <td>${sign}${fmt(cnyVal)}</td>
+          <td style="color:var(--text2)">${sub.note || ''}</td>
+          <td>
+            <button class="btn btn-sm" style="background:var(--border);color:var(--text)" onclick="showEditSub('${acc.id}','${sub.id}')">编辑</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSub('${acc.id}','${sub.id}')">删除</button>
+          </td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+    } else {
+      html += `<p style="color:var(--text2);font-size:13px;padding:8px 0">该账户暂无${isLiab?'负债项':'子账户'}，点击"+ ${isLiab?'负债项':'子账户'}"添加。</p>`;
+    }
+    html += `</div>`;
+  });
+  document.getElementById('accountsContent').innerHTML = html;
+}
+
+// ====== 变更记录 ======
+function renderHistory() {
+  const tbody = document.querySelector('#historyTable tbody');
+  if (!db.history || db.history.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text2)">暂无变更记录</td></tr>';
+    return;
+  }
+  tbody.innerHTML = db.history.map(h => `<tr>
+    <td>${h.time}</td><td>${h.type}</td><td>${h.content}</td>
+    <td>
+      ${h.snapshot ? `<button class="btn btn-sm" style="background:var(--orange);color:#fff" onclick="rollbackUpload('${h.id}')">回滚此次上传</button> ` : ''}
+      <button class="btn btn-sm btn-danger" onclick="deleteHistoryRecord('${h.id}')">删除</button>
+    </td>
+  </tr>`).join('');
+}
+
+function rollbackUpload(id) {
+  const entry = db.history.find(h => h.id === id);
+  if (!entry || !entry.snapshot) { alert('该记录没有快照可回滚'); return; }
+  if (!confirm(`回滚到「${entry.content}」之前的状态？\n\n这会撤销该次操作时的所有改动。\n回滚后建议再次点击"📤 上传数据"把结果同步到云端。`)) return;
+  db.accounts = entry.snapshot.accounts;
+  db.assetHistory = entry.snapshot.assetHistory || db.assetHistory;
+  db.subAccountHistory = entry.snapshot.subAccountHistory || db.subAccountHistory || [];
+  db.history.unshift({
+    id: genId('h'),
+    time: new Date().toLocaleString('zh-CN'),
+    type: '回滚',
+    content: '回滚: ' + entry.content
+  });
+  saveDB();
+  renderAll();
+  showToast('✅ 已回滚成功', 'success', 3000);
+}
+
+function deleteHistoryRecord(id) {
+  if (!confirm('删除此条记录？（仅影响日志，不影响实际数据）')) return;
+  db.history = db.history.filter(h => h.id !== id);
+  saveDB();
+  renderHistory();
+}
+
+// ====== 通用 ======
+function exportData() {
+  const json = JSON.stringify(db, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `asset-dashboard-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function validateImportedData(data) {
+  if (!data || typeof data !== 'object') throw new Error('备份文件格式无效');
+  if (!Array.isArray(data.accounts)) throw new Error('备份文件缺少 accounts');
+  return {
+    accounts: data.accounts || [],
+    history: Array.isArray(data.history) ? data.history : [],
+    assetHistory: Array.isArray(data.assetHistory) ? data.assetHistory : [],
+    yearlyReturns: Array.isArray(data.yearlyReturns) ? data.yearlyReturns : [],
+    subAccountHistory: Array.isArray(data.subAccountHistory) ? data.subAccountHistory : [],
+    assetHistoryMode: data.assetHistoryMode || 'upload-only',
+    lastRateUpdate: data.lastRateUpdate || null,
+    rates: data.rates || undefined
+  };
+}
+
+function importData(event) {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = validateImportedData(JSON.parse(reader.result));
+      if (!confirm('导入备份会覆盖当前本机数据，确认继续吗？')) return;
+      db = imported;
+      ensureDataShape(db);
+      if (db.rates) RATES = Object.assign(RATES, db.rates);
+      initYearlyReturns();
+      saveDB();
+      renderAll();
+      showToast('✅ 已导入备份。需要同步到另一台设备时，请点击「上传数据」。', 'success', 5000);
+    } catch (e) {
+      showToast('❌ 导入失败: ' + e.message, 'error', 6000);
+    }
+  };
+  reader.onerror = () => showToast('❌ 读取备份文件失败', 'error', 5000);
+  reader.readAsText(file);
+}
+
+function clearAll() {
+  if (!confirm('⚠️ 清除全部数据？\n这会删除所有账户、子账户、历史曲线、变更记录。\n建议先点击"导出备份"。')) return;
+  if (!confirm('再次确认：真的清除全部？')) return;
+  localStorage.removeItem(DB_KEY);
+  db = loadDB();
+  renderAll();
+  alert('已清空');
+}
+
+function renderAll() {
+  renderOverview();
+  renderMobile();
+  renderYearly();
+  renderClassify();
+  renderAccounts();
+  renderHistory();
+  updateRateInfo();
+}
+
+// ====== 历年收益 ======
+let _yearCurrentSign = '+';
+function initYearlyReturns() {
+  if (!Array.isArray(db.yearlyReturns)) db.yearlyReturns = [];
+  if (db.yearlyReturns.length === 0) {
+    for (let y = 2019; y <= 2026; y++) db.yearlyReturns.push({ year: y, value: 0 });
+    saveDB();
+  }
+}
+
+function renderYearly() {
+  const grid = document.getElementById('yearlyGrid');
+  if (!grid) return;
+  // 防御：如果数组缺失或为空，立刻补齐默认 8 个
+  if (!Array.isArray(db.yearlyReturns) || db.yearlyReturns.length === 0) {
+    db.yearlyReturns = [];
+    for (let y = 2019; y <= 2026; y++) db.yearlyReturns.push({ year: y, value: 0 });
+    saveDB();
+  }
+  const sorted = [...db.yearlyReturns].sort((a,b) => a.year - b.year);
+  // 自适应大小：数量越多越紧凑
+  const n = sorted.length;
+  let minSize;
+  if (n <= 4) minSize = 220;
+  else if (n <= 8) minSize = 170;
+  else if (n <= 12) minSize = 140;
+  else if (n <= 18) minSize = 120;
+  else minSize = 100;
+  grid.style.gridTemplateColumns = `repeat(auto-fit, minmax(${minSize}px, 1fr))`;
+
+  grid.innerHTML = sorted.map(item => {
+    const v = Number(item.value) || 0;
+    const cls = v > 0 ? 'gain' : v < 0 ? 'loss' : 'empty';
+    const sign = v > 0 ? '+' : v < 0 ? '−' : '';
+    const amt = v !== 0 ? fmt(Math.abs(v)) : '点击填入';
+    const unit = v !== 0 ? '<span class="unit">元</span>' : '';
+    return `<div class="year-module ${cls}" onclick="showEditYear(${item.year})">
+      <button class="year-delete-btn" onclick="event.stopPropagation();quickDeleteYear(${item.year})" title="删除该年">✕</button>
+      <button class="year-sign-btn" onclick="event.stopPropagation();quickToggleSign(${item.year})" title="切换正负">±</button>
+      <div class="year-label">${item.year} 年</div>
+      <div class="year-amount">${sign}${amt}${unit}</div>
+    </div>`;
+  }).join('');
+
+  // 累计
+  const total = sorted.reduce((s, y) => s + (Number(y.value) || 0), 0);
+  const totalEl = document.getElementById('yearlyTotal');
+  if (totalEl) {
+    totalEl.textContent = (total >= 0 ? '+' : '−') + fmt(Math.abs(total)) + ' CNY';
+    totalEl.style.color = total > 0 ? 'var(--red)' : total < 0 ? 'var(--accent)' : 'var(--text)';
+  }
+}
+
+function showEditYear(year) {
+  let item = (db.yearlyReturns || []).find(y => y.year === year);
+  if (!item) {
+    item = { year, value: 0 };
+  }
+  _yearCurrentSign = item.value < 0 ? '-' : '+';
+  document.getElementById('yearTitle').textContent = `编辑 ${year} 年度收益`;
+  document.getElementById('yEditingYear').value = year;
+  document.getElementById('yYear').value = year;
+  document.getElementById('yAmount').value = item.value !== 0 ? Math.abs(item.value) : '';
+  updateYearSignButtons();
+  showModal('modalYear');
+}
+
+function setYearSign(sign) { _yearCurrentSign = sign; updateYearSignButtons(); }
+
+function updateYearSignButtons() {
+  const plus = document.getElementById('ySignPlus');
+  const minus = document.getElementById('ySignMinus');
+  if (!plus || !minus) return;
+  if (_yearCurrentSign === '+') {
+    plus.style.cssText = 'flex:1;padding:16px;border:2px solid transparent;border-radius:12px;background:linear-gradient(135deg,#f56565,#c53030);color:#fff;font-size:18px;font-weight:800;cursor:pointer';
+    minus.style.cssText = 'flex:1;padding:16px;border:2px solid var(--border);border-radius:12px;background:transparent;color:var(--text);font-size:18px;font-weight:800;cursor:pointer';
+  } else {
+    minus.style.cssText = 'flex:1;padding:16px;border:2px solid transparent;border-radius:12px;background:linear-gradient(135deg,#4299e1,#2c5282);color:#fff;font-size:18px;font-weight:800;cursor:pointer';
+    plus.style.cssText = 'flex:1;padding:16px;border:2px solid var(--border);border-radius:12px;background:transparent;color:var(--text);font-size:18px;font-weight:800;cursor:pointer';
+  }
+}
+
+function saveYear() {
+  const originalYear = parseInt(document.getElementById('yEditingYear').value);
+  const newYear = parseInt(document.getElementById('yYear').value);
+  const amt = Math.abs(parseFloat(document.getElementById('yAmount').value) || 0);
+  if (!newYear || newYear < 1900 || newYear > 2200) { alert('请输入有效年份'); return; }
+  const signed = _yearCurrentSign === '-' ? -amt : amt;
+  if (!Array.isArray(db.yearlyReturns)) db.yearlyReturns = [];
+  // 如果改了年份，先移除旧的
+  if (originalYear && originalYear !== newYear) {
+    db.yearlyReturns = db.yearlyReturns.filter(y => y.year !== originalYear);
+  }
+  const idx = db.yearlyReturns.findIndex(y => y.year === newYear);
+  if (idx >= 0) db.yearlyReturns[idx].value = signed;
+  else db.yearlyReturns.push({ year: newYear, value: signed });
+  db.yearlyReturns.sort((a,b) => a.year - b.year);
+  addHistory('修改', `${newYear} 年度收益: ${signed>=0?'+':'−'}${fmt(Math.abs(signed))} CNY`);
+  saveDB();
+  closeModal('modalYear');
+  renderYearly();
+}
+
+function deleteYear() {
+  const year = parseInt(document.getElementById('yEditingYear').value);
+  if (!year) return;
+  if (!confirm(`删除 ${year} 年的记录？`)) return;
+  db.yearlyReturns = (db.yearlyReturns || []).filter(y => y.year !== year);
+  addHistory('删除', `删除 ${year} 年度收益模块`);
+  saveDB();
+  closeModal('modalYear');
+  renderYearly();
+}
+
+function quickDeleteYear(year) {
+  if (!confirm(`删除 ${year} 年的记录？`)) return;
+  db.yearlyReturns = (db.yearlyReturns || []).filter(y => y.year !== year);
+  addHistory('删除', `删除 ${year} 年度收益模块`);
+  saveDB();
+  renderYearly();
+}
+
+function quickToggleSign(year) {
+  const item = (db.yearlyReturns || []).find(y => y.year === year);
+  if (!item) return;
+  if (item.value === 0) { showEditYear(year); return; } // 0 直接打开编辑
+  item.value = -item.value;
+  addHistory('修改', `${year} 年度切换正负: 现 ${item.value>=0?'+':'−'}${fmt(Math.abs(item.value))} CNY`);
+  saveDB();
+  renderYearly();
+}
+
+function addNextYear() {
+  if (!Array.isArray(db.yearlyReturns)) db.yearlyReturns = [];
+  const years = db.yearlyReturns.map(y => y.year);
+  const maxYear = years.length > 0 ? Math.max(...years) : new Date().getFullYear() - 1;
+  const newYear = maxYear + 1;
+  if (years.includes(newYear)) { alert(`${newYear} 年已存在`); return; }
+  db.yearlyReturns.push({ year: newYear, value: 0 });
+  db.yearlyReturns.sort((a,b) => a.year - b.year);
+  addHistory('新增', `新增 ${newYear} 年度收益模块`);
+  saveDB();
+  renderYearly();
+}
+
+// ====== 手机录入 ======
+function renderMobile() {
+  let html = '';
+  if (db.accounts.length === 0) {
+    html = '<div class="card"><p style="color:var(--text2);text-align:center;padding:24px">还没有账户，点击上方"+ 添加账户"开始</p></div>';
+    document.getElementById('mobileContent').innerHTML = html;
+    return;
+  }
+  const TYPE_LABELS = { broker: '券商', bank: '银行', fund: '基金/理财', liability: '负债', other: '其他' };
+  db.accounts.forEach(acc => {
+    const isLiab = acc.type === 'liability';
+    const sign = isLiab ? -1 : 1;
+    const accCNY = (acc.subAccounts || []).reduce((s, sub) => s + sign * toCNY(Math.abs(Number(sub.amount)||0), sub.currency || acc.currency), 0);
+    const typeLabel = TYPE_LABELS[acc.type] || acc.type;
+    const liabBadge = isLiab ? `<span style="background:var(--orange);color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:6px">负债</span>` : '';
+    html += `<div class="m-account-card" ${isLiab ? 'style="border-left:4px solid var(--orange)"' : ''}>
+      <div class="m-acc-head">
+        <div style="flex:1;min-width:0">
+          <div class="m-acc-name">${acc.name}${liabBadge}</div>
+          <div class="m-acc-meta">${typeLabel} · 默认 ${acc.currency} · 合计 ≈ <strong style="color:${isLiab?'var(--orange)':'var(--text)'}">${isLiab?'-':''}${fmt(Math.abs(accCNY))} CNY</strong></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="m-icon-btn" onclick="showEditAccount('${acc.id}')" title="编辑账户">✏️</button>
+          <button class="m-icon-btn danger" onclick="deleteAccount('${acc.id}')" title="删除账户">🗑️</button>
+        </div>
+      </div>`;
+    (acc.subAccounts || []).forEach(sub => {
+      const c = sub.currency || acc.currency;
+      const amt = Math.abs(Number(sub.amount) || 0);
+      html += `<div class="m-sub-row" onclick="showEditSub('${acc.id}','${sub.id}')">
+        <div class="m-sub-info">
+          <div class="m-sub-name">${sub.name}</div>
+          ${sub.note ? `<div class="m-sub-note">${sub.note}</div>` : ''}
+        </div>
+        <div class="m-sub-actions">
+          <div class="m-sub-amount" ${isLiab?'style="color:var(--orange)"':''}>${isLiab?'-':''}${fmt(amt)} ${c}</div>
+          <button class="m-history-btn" onclick="event.stopPropagation();showSubHistory('${acc.id}','${sub.id}')">查看记录</button>
+          <button class="m-icon-btn danger" onclick="event.stopPropagation();deleteSub('${acc.id}','${sub.id}')" title="删除">✕</button>
+        </div>
+      </div>`;
+    });
+    html += `<button class="m-add-btn" onclick="showAddSub('${acc.id}')">+ 添加${isLiab?'负债':'子账户'}</button>`;
+    html += `</div>`;
+  });
+  document.getElementById('mobileContent').innerHTML = html;
+}
+
+function showSubHistory(accId, subId) {
+  const acc = db.accounts.find(a => a.id === accId);
+  const sub = acc && (acc.subAccounts || []).find(s => s.id === subId);
+  if (!acc || !sub) return;
+  const isLiab = acc.type === 'liability';
+  const entries = (db.subAccountHistory || [])
+    .filter(item => item.accountId === accId && item.subId === subId)
+    .sort((a, b) => (b.recordedAt || '').localeCompare(a.recordedAt || ''));
+  document.getElementById('subHistoryTitle').textContent = `${acc.name} / ${sub.name} 录入历史`;
+  document.getElementById('subHistoryContent').innerHTML = entries.length === 0
+    ? '<div class="history-empty">暂无录入历史。后续每次保存金额后，这里都会记录对应日期和数值。</div>'
+    : entries.map(item => `
+      <div class="history-item">
+        <div class="history-item-top">
+          <div class="history-item-time">${formatDateTimeText(item.recordedAt)}</div>
+          <div class="history-item-value" ${isLiab ? 'style="color:var(--orange)"' : ''}>${isLiab ? '-' : ''}${fmt(Math.abs(Number(item.amount) || 0))} ${item.currency}</div>
+        </div>
+        <div class="history-item-meta">录入日期：${item.recordedDate || '未知'}<br>动作：${item.action === 'create' ? '新增' : '修改'}</div>
+      </div>
+    `).join('');
+  showModal('modalSubHistory');
+}
+
+// ====== 主题切换 ======
+function toggleTheme() {
+  const isLight = document.documentElement.classList.toggle('light');
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.textContent = isLight ? '☀️' : '🌙';
+  // 重绘需要重新画 canvas 背景
+  renderAssetChart();
+}
+function initTheme() {
+  const t = localStorage.getItem('theme');
+  if (t === 'light') {
+    document.documentElement.classList.add('light');
+    const btn = document.getElementById('themeToggle');
+    if (btn) btn.textContent = '☀️';
+  }
+}
+
+function updateRateInfo() {
+  const el = document.getElementById('rateInfo');
+  if (el) el.textContent = `1USD=${RATES.USD.toFixed(2)}¥ 1HKD=${RATES.HKD.toFixed(2)}¥`;
+}
+
+// ====== Toast 通知系统 ======
+function showToast(msg, type, duration) {
+  type = type || 'info';
+  duration = duration || 3000;
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast-item toast-' + type;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  // 触发动画
+  requestAnimationFrame(() => { toast.classList.add('show'); });
+  // 自动移除
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+  }, duration);
+  return toast;
+}
+
+// 同步按钮 loading 状态
+function setUploadLoading(loading) {
+  document.querySelectorAll('.btn-modern.btn-upload, .m-big-btn.m-upload').forEach(btn => {
+    if (loading) {
+      btn.classList.add('loading');
+      btn.dataset.origText = btn.textContent;
+      btn.textContent = '⏳ 上传中...';
+    } else {
+      btn.classList.remove('loading');
+      if (btn.dataset.origText) btn.textContent = btn.dataset.origText;
+    }
+  });
+}
+function setDownloadLoading(loading) {
+  document.querySelectorAll('.btn-modern.btn-download, .m-big-btn.m-download').forEach(btn => {
+    if (loading) {
+      btn.classList.add('loading');
+      btn.dataset.origText = btn.textContent;
+      btn.textContent = '⏳ 下载中...';
+    } else {
+      btn.classList.remove('loading');
+      if (btn.dataset.origText) btn.textContent = btn.dataset.origText;
+    }
+  });
+}
+
+// 更新同步状态显示（带彩色圆点）
+
+
+// ====== 云端同步 (Cloudflare Pages + KV) ======
+const SYNC_KEY = 'assetDashboardV2_sync';
+const CLOUD_API_ORIGIN = 'https://asset-dashboard.liwei19901023.workers.dev';
+let syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY) || '{}');
+let _pushTimer = null;
+
+function saveSyncCfg() { localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg)); }
+
+async function sha256Hex(text) {
+  const bytes = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function cloudUrl() {
+  const secret = (syncCfg.secret || '').trim();
+  if (!secret) return null;
+  const key = await sha256Hex('asset-dashboard:' + secret);
+  const base = location.hostname.endsWith('workers.dev') ? '' : CLOUD_API_ORIGIN;
+  return `${base}/api/data?key=${encodeURIComponent(key)}`;
+}
+
+function syncErrorDetail(action, error, url) {
+  return [
+    `${action}失败: ${error.message}`,
+    '',
+    `当前页面: ${location.href}`,
+    `请求接口: ${new URL(url, location.href).href}`,
+    `浏览器状态: ${navigator.onLine ? 'online' : 'offline'}`,
+    '',
+    error.name === 'AbortError'
+      ? '连接超时：手机当前网络或代理没有连通 Cloudflare Worker。'
+      : error.message.includes('Failed to fetch')
+        ? '网络请求失败：手机当前网络或代理拦截了同步接口，或浏览器阻止了跨域请求。'
+        : '请检查同步密钥、Cloudflare KV 绑定和网络是否正常。'
+  ].join('\n');
+}
+
+function updateSyncStatus() {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  if (!syncCfg.secret) { el.textContent = '云端未配置'; return; }
+  el.textContent = syncCfg.lastSync ? `云端: ${syncCfg.lastSync}` : '云端: 已配置, 未同步';
+}
+
+async function pushCloud(silent) {
+  const url = await cloudUrl();
+  if (!url) {
+    if (!silent) {
+      showToast('请先在 ☁ 同步设置 中填写同步密钥', 'error', 4000);
+      alert('请先在同步设置中填写同步密钥，并点击保存设置。');
+    }
+    return false;
+  }
+  // 显示 loading
+  setUploadLoading(true);
+  const localSummary = dataSummary(db);
+  if (!silent) showToast('正在上传数据到云端...', 'loading', 10000);
+  // 上传前保存本地快照（用于变更记录里的回滚）
+  const preSnapshot = JSON.parse(JSON.stringify({
+    accounts: db.accounts,
+    assetHistory: db.assetHistory,
+    subAccountHistory: db.subAccountHistory
+  }));
+  try {
+    console.log('📤 正在推送到 Cloudflare:', url);
+    const pushedAt = new Date().toISOString();
+    upsertAssetHistoryEntry(pushedAt.slice(0, 10), getCurrentNetAsset(), pushedAt);
+    const payload = { ...db, _pushedAt: pushedAt, assetHistoryMode: 'upload-only' };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const verifyController = new AbortController();
+    const verifyTimeout = setTimeout(() => verifyController.abort(), 60000);
+    const verifyResp = await fetch(url, { mode: 'cors', signal: verifyController.signal });
+    clearTimeout(verifyTimeout);
+    if (!verifyResp.ok) throw new Error('上传后校验失败 HTTP ' + verifyResp.status);
+    const verifyData = await verifyResp.json();
+    const cloudSummary = dataSummary(verifyData);
+    if (Math.abs(cloudSummary.netCNY - localSummary.netCNY) > 1) {
+      throw new Error(`上传后校验不一致：本机 ${fmt(localSummary.netCNY)}，云端 ${fmt(cloudSummary.netCNY)}`);
+    }
+    console.log('📤 推送成功');
+    syncCfg.lastSync = new Date().toLocaleString('zh-CN');
+    saveSyncCfg();
+    // 写入上传记录，带快照
+    db.history.unshift({
+      id: genId('h'),
+      time: new Date().toLocaleString('zh-CN'),
+      type: '上传',
+      content: `上传到云端 (${db.accounts.length} 个账户, 共 ${db.accounts.reduce((s,a)=>s+(a.subAccounts||[]).length,0)} 子账户)`,
+      snapshot: preSnapshot
+    });
+    if (db.history.length > 500) db.history = db.history.slice(0, 500);
+    saveDB();
+    updateSyncStatus();
+    renderHistory();
+    setUploadLoading(false);
+    if (!silent) {
+      const msg = '已上传到云端并校验通过：' + fmt(cloudSummary.netCNY) + ' CNY';
+      showToast('✅ ' + msg, 'success', 5000);
+      alert(msg);
+    }
+    return true;
+  } catch(e) {
+    setUploadLoading(false);
+    const tip = e.name === 'AbortError'
+      ? '连接超时：手机当前网络或代理没有连通 Cloudflare Worker。'
+      : e.message.includes('Failed to fetch')
+        ? '网络请求失败：当前网络或代理拦截了同步接口。'
+        : '请检查同步密钥、Cloudflare KV 绑定和网络是否正常。';
+    if (!silent) {
+      showToast('❌ 上传失败: ' + e.message, 'error', 6000);
+      showToast('💡 ' + tip, 'info', 8000);
+      alert(syncErrorDetail('上传', e, url));
+    }
+    return false;
+  }
+}
+
+async function pullCloud(silent) {
+  const url = await cloudUrl();
+  if (!url) {
+    if (!silent) showToast('请先在 ☁ 同步设置 中填写同步密钥', 'error', 4000);
+    return false;
+  }
+  // 显示 loading
+  setDownloadLoading(true);
+  if (!silent) showToast('正在从云端拉取数据...', 'loading', 10000);
+  try {
+    console.log('📥 正在从 Cloudflare 拉取:', url);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    const resp = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!resp.ok) {
+      if (resp.status === 404) throw new Error('HTTP ' + resp.status + ' (云端暂无数据，请先在另一台设备点"上传数据")');
+      throw new Error('HTTP ' + resp.status);
+    }
+    const data = await resp.json();
+    console.log('📥 拉取成功, 数据:', data.accounts ? data.accounts.length + ' 个账户' : '空');
+    if (!data || typeof data !== 'object') throw new Error('返回数据无效');
+    const localSummary = dataSummary(db);
+    const cloudSummary = dataSummary(data);
+    if (!silent) {
+      setDownloadLoading(false);
+      const ok = confirm(
+        '⚠️ 从云端拉取会覆盖本机当前数据。\n\n' +
+        summaryText('本机当前', localSummary) + '\n' +
+        summaryText('云端数据', cloudSummary) + '\n' +
+        `云端推送时间: ${cloudSummary.pushedAt}\n\n` +
+        '确认用云端数据覆盖本机吗？'
+      );
+      if (!ok) return false;
+      setDownloadLoading(true);
+    }
+        // 保存拉取前的快照（用于回滚）
+  const preSnapshot = JSON.parse(JSON.stringify({
+    accounts: db.accounts,
+    assetHistory: db.assetHistory,
+    subAccountHistory: db.subAccountHistory
+  }));
+    db = {
+      accounts: data.accounts || [],
+      history: data.history || [],
+      assetHistory: data.assetHistory || [],
+      yearlyReturns: Array.isArray(data.yearlyReturns) ? data.yearlyReturns : [],
+      subAccountHistory: Array.isArray(data.subAccountHistory) ? data.subAccountHistory : [],
+      assetHistoryMode: data.assetHistoryMode || 'upload-only',
+      lastRateUpdate: data.lastRateUpdate || null,
+      rates: data.rates
+    };
+    ensureDataShape(db);
+    if (db.rates) RATES = Object.assign(RATES, db.rates);
+    initYearlyReturns();
+    // 添加下载记录（含快照，用于回滚）
+    db.history.unshift({
+      id: genId('h'),
+      time: new Date().toLocaleString('zh-CN'),
+      type: '下载',
+      content: `从云端拉取数据 (${data.accounts ? data.accounts.length : 0} 个账户)`,
+      snapshot: preSnapshot
+    });
+    if (db.history.length > 500) db.history = db.history.slice(0, 500);
+    saveDB();
+    syncCfg.lastSync = new Date().toLocaleString('zh-CN');
+    saveSyncCfg();
+    renderAll();
+    setDownloadLoading(false);
+    const pushTime = data._pushedAt || '未知';
+    if (!silent) {
+      const msg = '已从云端拉取：' + fmt(cloudSummary.netCNY) + ' CNY\n推送时间: ' + pushTime;
+      showToast('✅ ' + msg.replace('\n', ' '), 'success', 4000);
+      alert(msg);
+    }
+    return true;
+  } catch(e) {
+    setDownloadLoading(false);
+    const tip = e.name === 'AbortError'
+      ? '连接超时：手机当前网络或代理没有连通 Cloudflare Worker。'
+      : e.message.includes('Failed to fetch')
+        ? '网络请求失败：当前网络或代理拦截了同步接口。'
+        : '如果是首次使用，请先在另一端点"⬆ 推送"上传数据。';
+    if (!silent) {
+      showToast('❌ 拉取失败: ' + e.message, 'error', 6000);
+      showToast('💡 ' + tip, 'info', 8000);
+      alert(syncErrorDetail('下载', e, url));
+    }
+    return false;
+  }
+}
+
+async function testCloudConnection() {
+  const url = await cloudUrl();
+  if (!url) {
+    alert('请先填写同步密钥并保存。');
+    return false;
+  }
+  try {
+    const resp = await fetch(url, { method: 'GET', cache: 'no-store' });
+    let body = '';
+    try { body = await resp.text(); } catch (e) {}
+    alert([
+      '连接测试完成',
+      '',
+      `当前页面: ${location.href}`,
+      `请求接口: ${new URL(url, location.href).href}`,
+      `HTTP 状态: ${resp.status}`,
+      body ? `返回内容: ${body.slice(0, 300)}` : ''
+    ].join('\n'));
+    return resp.ok;
+  } catch (e) {
+    alert(syncErrorDetail('连接测试', e, url));
+    return false;
+  }
+}
+
+function showSyncSettings() {
+  document.getElementById('syncSecret').value = syncCfg.secret || '';
+  showModal('modalSync');
+}
+
+function saveSyncSettings() {
+  syncCfg.secret = document.getElementById('syncSecret').value.trim();
+  delete syncCfg.pantryId;
+  delete syncCfg.basket;
+  saveSyncCfg();
+  closeModal('modalSync');
+  updateSyncStatus();
+  showToast('✅ 同步设置已保存', 'success', 3000);
+  alert('同步设置已保存。电脑和手机请填写同一个同步密钥。');
+}
+
+function bindChartInteractions() {
+  const canvas = document.getElementById('assetChart');
+  if (!canvas || canvas.dataset.bound === '1') return;
+  canvas.dataset.bound = '1';
+  canvas.addEventListener('click', event => {
+    const index = findAssetChartPoint(event.clientX, event.clientY);
+    if (index == null) {
+      hideAssetChartTooltip();
+      return;
+    }
+    showAssetChartTooltip(index);
+  });
+  canvas.addEventListener('mousemove', event => {
+    const index = findAssetChartPoint(event.clientX, event.clientY);
+    canvas.style.cursor = index == null ? 'default' : 'pointer';
+  });
+  document.addEventListener('click', event => {
+    const tooltip = document.getElementById('assetChartTooltip');
+    if (!tooltip || tooltip.style.display !== 'block') return;
+    const chartCard = canvas.closest('.chart-card');
+    if (chartCard && !chartCard.contains(event.target)) hideAssetChartTooltip();
+  });
+}
+
+// 手动同步模式：关闭自动推送，由用户手动点击"上传/下载"
+// 如需自动推送，可取消注释下面的代码或在同步设置中开启
+/*
+const _originalSaveDB = saveDB;
+saveDB = function() {
+  _originalSaveDB();
+  // ... autoPush 逻辑 ...
+};
+*/
+
+
+// 初始化
+migrateLegacyData();
+initTheme();
+initYearlyReturns();
+bindChartInteractions();
+renderAll();
+updateSyncStatus();
+updateRates();
+// 自动拉取已禁用（防止覆盖本地编辑数据）
+// 如需从云端拉取，请手动点击"📥 下载数据"
+// 开启自动拉取有数据丢失风险：如果您在另一台设备编辑后还未推送到云端，
+// 自动拉取会用云端旧数据覆盖本地新数据。
+</script>
+<!-- Toast 通知容器 -->
+<div class="toast-container" id="toastContainer"></div>
+
+</body>
+</html>

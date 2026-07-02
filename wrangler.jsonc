@@ -1,0 +1,16 @@
+{
+  "name": "asset-dashboard",
+  "main": "worker.js",
+  "compatibility_date": "2026-06-26",
+  "kv_namespaces": [
+    {
+      "binding": "ASSET_DASHBOARD_KV",
+      "id": "974bf89bbc9d4ab7ab60b87e1be84046"
+    }
+  ],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  }
+}

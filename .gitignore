@@ -1,0 +1,18 @@
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 编辑器临时文件
+*.swp
+*.swo
+*~
+
+# 日志
+*.log
+
+# Cloudflare 本地部署缓存
+.wrangler/
+
+# 本地资产数据和备份（不要提交到公开仓库）
+*.json
+*备份*.html
